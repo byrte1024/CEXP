@@ -5,12 +5,11 @@ RAYLIB_LIB = ./lib/libraylib.a
 
 # Directories
 SRC_DIR = ./src
-INCLUDE_DIR = ./include
 BIN_DIR = ./bin
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -I$(INCLUDE_DIR) -I$(RAYLIB_INCLUDE) -static
+CFLAGS = -I$(RAYLIB_INCLUDE) -static
 LDFLAGS = -L$(RAYLIB_DIR)/src -lraylib -lwinmm -lgdi32 -lopengl32 -static
 
 # Implement both .c, .h and .cpp files

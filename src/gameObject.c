@@ -8,7 +8,7 @@ GameObject* newGameObject(int x, int y, float rotation, int scalex, int scaley) 
     obj->position = newIVec2(x, y);
     obj->rotation = rotation;
     obj->scale = newIVec2(scalex, scaley);
-    
+    obj->destroyed = false;
     obj->StartCount = 0;
     obj->UpdateCount = 0;
     obj->LateUpdateCount = 0;
@@ -164,7 +164,7 @@ void callEvent(GameObject* obj, EventType eventType) {
 }
 
 int assignData(GameObject* obj, void* data) {
-    if(obj->destroyed) return;
+    if(obj->destroyed) return -1;
     for (int i = 0; i < MAX_DATA; i++) {
         if (obj->data[i] == NULL) {
             obj->data[i] = data;
@@ -180,7 +180,7 @@ void setData(GameObject* obj, int index, void* data) {
 }
 
 void* getData(GameObject* obj, int index) {
-    if(obj->destroyed) return;
+    if(obj->destroyed) return NULL;
     return obj->data[index];
 }
 
