@@ -8,21 +8,21 @@
 #include "gameObject.h"
 #include "ivec2.h"
 #include "textureGrid.h"
+#include "scene.h"  
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 
-#define RT_FACTOR 12
+#define RT_FACTOR 6
 
 #define RT_WIDTH SCREEN_WIDTH/RT_FACTOR
 #define RT_HEIGHT SCREEN_HEIGHT/RT_FACTOR
 
-#define MAX_OBJECTS 255
 
-GameObject* objs[MAX_OBJECTS];
-int count = 0;
+static Scene* scene;
 
 void defUpdater(GameObject* self);
+void defDestroyer(GameObject* self);
 void defGridRenderer(GameObject* self);
 
 bool inBounds(int x, int y, int width, int height){
@@ -43,7 +43,8 @@ void defGridRenderer(GameObject* self){
 #define MIN_ISLAND_SIZE 1
 
 void seperateIsland(GameObject* parent, Island* island, TextureGrid* grid){
-    if(count >= MAX_OBJECTS){
+
+    if(isSceneFull(scene)){
         removeIsland(grid, island);
         return;
         
@@ -51,7 +52,8 @@ void seperateIsland(GameObject* parent, Island* island, TextureGrid* grid){
 
     IVec2 min;
     IVec2 max;
-    TextureGrid* newGrid = newTextureGridFromIsland(island,grid,&min,&max,2);
+    TextureGrid* newGrid = newTextureGridFromIsland(island,grid,&min,&max,1);
+
     removeIsland(grid, island);
 
     //We want to "offset" the island from the parent object based on how much the min is pushed
@@ -61,22 +63,43 @@ void seperateIsland(GameObject* parent, Island* island, TextureGrid* grid){
         return;
     }
 
-    printf("Island %ix%i\n", newGrid->width, newGrid->height);
-    GameObject* obj = newGameObject(parent->position->x + offset.x, parent->position->y + offset.y, 0, 1, 1);
-    addEvent(obj, defGridRenderer, Render);
-    addEvent(obj, defUpdater, Update);
-    setData(obj, 7, newGrid);
-    objs[count] = obj;
-    count++;
-    /*
+    int firstReplaceable = getReplaceableSpot(scene);
+
+    if(firstReplaceable == -1){
+        GameObject* obj = newGameObject(parent->position->x + offset.x, parent->position->y + offset.y, 0, 1, 1);
+        addEvent(obj, defGridRenderer, Render);
+        addEvent(obj, defUpdater, Update);
+        addEvent(obj, defDestroyer, Destroy);
+        setData(obj, 7, newGrid);
+        addObject(scene, obj);
+        return;
+    }
+    else{
+        GameObject* obj = scene->objs[firstReplaceable];
+        obj->destroyed = false;
+        obj->position->x = parent->position->x + offset.x;
+        obj->position->y = parent->position->y + offset.y;
+        addEvent(obj, defGridRenderer, Render);
+        addEvent(obj, defUpdater, Update);
+        setData(obj, 7, newGrid);
+        addEvent(obj, defDestroyer, Destroy);
+       
+        scene->count++;
+        return;
+    }
+
     
-    
-    
-    */
+}
+
+void defDestroyer(GameObject* self){
+    TextureGrid* grid = (TextureGrid*)getData(self, 7);
+    if (grid == NULL){
+        return;
+    }
+    disposeTextureGrid(grid);
 }
 
 void defUpdater(GameObject* self){
-
 
     TextureGrid* grid = (TextureGrid*)getData(self, 7);
     if (grid == NULL){
@@ -104,9 +127,9 @@ void defUpdater(GameObject* self){
     }
 
     //Move around randomly
-    if (GetRandomValue(0, 500) < 5){
-        self->position->x += GetRandomValue(-3, 3);
-        self->position->y += GetRandomValue(-3, 3);
+    if (GetRandomValue(0, 50) < 5 && !IsKeyDown(KEY_LEFT_CONTROL)){
+        self->position->x += GetRandomValue(-1, 1);
+        self->position->y += GetRandomValue(-1, 1);
     }
 
 
@@ -140,40 +163,39 @@ void main()
 
     SetTargetFPS(60);  
 
-    /*
-    GameObject* obj = newGameObject(50,50,0,20,20);
-    addEvent(obj, defRenderer, Render);
-    addEvent(obj, defUpdater, Update);
-    */
-
-    Image image = GenImageColor(32, 32, BLACK);
+    //
+    Image image = LoadImage("input.png");
 
     RenderTexture2D target = LoadRenderTexture(RT_WIDTH, RT_HEIGHT);
 
-    Color is[MAX_OBJECTS] = {RED, GOLD, GRAY, LIME, BLUE, VIOLET, BROWN, GREEN, PINK,DARKBROWN, DARKPURPLE, DARKGREEN, DARKGRAY};
+    Color is[14] = {RED, GOLD, GRAY, LIME, BLUE, VIOLET, BROWN, GREEN, PINK,DARKBROWN, DARKPURPLE, DARKGREEN, DARKGRAY};
 
-    
+    scene = newScene();
 
-    
-
-    objs[count] = newGameObject(64,32,0,1,1);
-    addEvent(objs[count], defUpdater, Update);
+    GameObject* g = newGameObject(64,32,0,1,1);
+    addEvent(g, defUpdater, Update);
     TextureGrid* grid = newTextureGridFromImage(image);
-    setData(objs[count], 7, grid);
-    addEvent(objs[count], defGridRenderer, Render);
-    count++;
+    setData(g, 7, grid);
+    addEvent(g, defGridRenderer, Render);
+    addEvent(g, defDestroyer, Destroy);
+    addObject(scene, g);
 
     
     while (!WindowShouldClose())
     {
-        
+        // Update logic
+        sceneCallEvent(scene, Update);
 
-        for (int i = 0; i < count; i++)
-        {
-            callEvent(objs[i], Update);
+        if(IsKeyPressed(KEY_R)){
+            for(int i = 0; i < scene->capacity; i++){
+                //Run a 50/50 chance of destroying the object
+                if(scene->objs[i] != NULL && GetRandomValue(0,5) == 1 && scene->objs[i]->destroyed == false){
+                    GameObject* obj = scene->objs[i];
+                    removeIndex(scene, i);
+                    disposeGameObject(obj);
+                }
+            }
         }
-        
-
 
         // Render logic
         BeginDrawing();
@@ -183,10 +205,26 @@ void main()
 
                 ClearBackground(RAYWHITE);
 
-                for (int i = 0; i < count; i++)
-                {
-                    callEvent(objs[i], Render);
+
+                sceneCallEvent(scene, Render);
+
+                for(int i = 0; i < scene->capacity; i++){
+                    if(scene->objs[i] != NULL){
+                        //Draw the index
+                        
+
+                        if(!scene->objs[i]->destroyed){
+                            TextureGrid* grid = (TextureGrid*)getData(scene->objs[i], 7);
+                            if(grid != NULL){
+                                //Render bounds
+                                DrawRectangleLines(scene->objs[i]->position->x, scene->objs[i]->position->y, grid->width, grid->height, DARKBLUE);
+                            }
+                        }
+
+                        DrawText(TextFormat("%i", i), scene->objs[i]->position->x, scene->objs[i]->position->y, 2, RED);
+                    }
                 }
+
 
             EndTextureMode();
 
@@ -196,7 +234,7 @@ void main()
             DrawText(TextFormat("FPS: %i",GetFPS()), 10, 10, 40, BLACK);
 
             //Current scene objects
-            DrawText(TextFormat("Objects: %i",count), 10, 50, 40, BLACK);
+            DrawText(TextFormat("Objects: %i",scene->count), 10, 50, 40, BLACK);
             
         EndDrawing();
     }

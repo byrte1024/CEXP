@@ -22,9 +22,11 @@ GameObject* newGameObject(int x, int y, float rotation, int scalex, int scaley) 
 }
 
 void disposeGameObject(GameObject* obj) {
+    callEvent(obj, Destroy);
     disposeIVec2(obj->position);
     disposeIVec2(obj->scale);
     free(obj);
+    
 }
 
 void addEvent(GameObject* obj, void (*event)(GameObject* self), EventType eventType) {
@@ -186,6 +188,7 @@ void* getData(GameObject* obj, int index) {
 
 void freeData(GameObject* obj, int index) {
     if(obj->destroyed) return;
+    if(obj->data[index] == NULL) return;
     free(obj->data[index]);
     obj->data[index] = NULL;
 }
@@ -198,5 +201,32 @@ void freeAllData(GameObject* obj) {
     }
 }
 
+void destroyGameObject(GameObject* obj) {
+    if(obj->destroyed) return;
+    callEvent(obj, Destroy);
+    obj->destroyed = true;
+    callEvent(obj, LateDestroy);
+    clearObject(obj);
+}
 
-
+void clearObject(GameObject* obj) {
+    freeAllData(obj);
+    for (int i = 0; i < MAX_EVENT_FUNCTIONS; i++) {
+        obj->Start[i] = NULL;
+        obj->Update[i] = NULL;
+        obj->LateUpdate[i] = NULL;
+        obj->BeforeRender[i] = NULL;
+        obj->Render[i] = NULL;
+        obj->AfterRender[i] = NULL;
+        obj->Destroy[i] = NULL;
+        obj->LateDestroy[i] = NULL;
+    }
+    obj->StartCount = 0;
+    obj->UpdateCount = 0;
+    obj->LateUpdateCount = 0;
+    obj->BeforeRenderCount = 0;
+    obj->RenderCount = 0;
+    obj->AfterRenderCount = 0;
+    obj->DestroyCount = 0;
+    obj->LateDestroyCount = 0;
+}

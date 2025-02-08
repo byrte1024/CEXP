@@ -1,3 +1,5 @@
 make
 
-bin\exec.exe
+cd bin
+
+exec.exe

@@ -91,6 +91,8 @@ GameObject* newGameObject(int x, int y, float rotation, int scalex, int scaley);
 
 void disposeGameObject(GameObject* obj);
 
+void destroyGameObject(GameObject* obj);
+
 void addEvent(GameObject* obj, void (*event)(GameObject* self), EventType eventType);
 
 void removeEvent(GameObject* obj, void (*event)(GameObject* self), EventType eventType);
@@ -107,6 +109,5 @@ void freeData(GameObject* obj, int index);
 
 void freeAllData(GameObject* obj);
 
-
-
+void clearObject(GameObject* obj);
 #endif
