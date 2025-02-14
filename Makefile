@@ -8,12 +8,14 @@ SRC_DIR = ./src
 BIN_DIR = ./bin
 
 # Compiler and flags
-CC = gcc
+CC = g++
 CFLAGS = -I$(RAYLIB_INCLUDE) -static
 LDFLAGS = -L$(RAYLIB_DIR)/src -lraylib -lwinmm -lgdi32 -lopengl32 -static
 
-# Implement both .c, .h and .cpp files
+# Implement both .c, .hpp and .cpp files
 SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
+SRC_FILES += $(wildcard $(SRC_DIR)/*.h)
+SRC_FILES += $(wildcard $(SRC_DIR)/*.hpp)
 SRC_FILES += $(wildcard $(SRC_DIR)/*.cpp)
 OUT = $(BIN_DIR)/exec
 
