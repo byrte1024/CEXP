@@ -103,6 +103,14 @@ void GameObject::render() {
 
 }
 
+void GameObject::destroy() {
+    //Loop through all components
+    for (int i = 0; i < components.size(); i++) {
+        //Call the onDestroy function
+        components[i]->onDestroy();
+    }
+}
+
 void GameObject::renderUI() {
     //Loop through all components
     for (int i = 0; i < components.size(); i++) {
@@ -126,7 +134,6 @@ void GameObject::renderUI() {
 
         
         DrawCircle(position.x, position.y, 4, BLUE);
-        DrawCircle(position.x - pivot.x, position.y - pivot.y, 4, GREEN);
     }
 }
 
@@ -160,3 +167,5 @@ std::array<Vector2, 4> GameObject::getRectCorners() {
         rotateAroundPoint(bl, position, cosTheta, sinTheta)
     };
 }
+
+//Destroy

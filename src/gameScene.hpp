@@ -9,6 +9,7 @@
 #include "gameObject.hpp"
 #include "gameComponent.hpp"
 #include "utils.hpp"
+#include <memory>
 
 class GameScene {
     public:

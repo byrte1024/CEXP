@@ -2,6 +2,7 @@
 
 #include "gc_move.hpp"
 #include <raylib.h>
+#include <memory>
 
 void MoveComponent::update() {
 
@@ -46,11 +47,11 @@ void MoveComponent::update() {
     }
 
     if(random){
-        if(GetRandomValue(0,50)==1){
-            gameObject->position.x += GetRandomValue(-25, 25);
-            gameObject->position.y += GetRandomValue(-25, 25);
+        if(GetRandomValue(0,5)==1){
+            gameObject->position.x += GetRandomValue(-2, 2);
+            gameObject->position.y += GetRandomValue(-2, 2);
 
-            gameObject->rotation += GetRandomValue(-15, 15);
+            gameObject->rotation += GetRandomValue(-1, 1);
         }
     }
 }

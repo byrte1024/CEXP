@@ -6,19 +6,25 @@
 #include <iostream>
 
 void GameScene::update() {
-    for (int i = 0; i < gameObjects.size(); i++) {
+    
+    for (int i = gameObjects.size() - 1; i >= 0; i--) {
+        if(gameObjects[i]->readytodie){
+            gameObjects[i]->destroy();
+            gameObjects.erase(gameObjects.begin() + i);
+            continue;
+        }
         gameObjects[i]->update();
     }
 }
 
 void GameScene::render() {
-    for (int i = 0; i < gameObjects.size(); i++) {
+    for (int i = gameObjects.size() - 1; i >= 0; i--) {
         gameObjects[i]->render();
     }
 }
 
 void GameScene::renderUI() {
-    for (int i = 0; i < gameObjects.size(); i++) {
+    for (int i = gameObjects.size() - 1; i >= 0; i--) {
         gameObjects[i]->renderUI();
     }
 }

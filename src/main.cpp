@@ -54,12 +54,12 @@ int main() {
     GameScene scene;
     currentScene = &scene;
 
-    shared_ptr<GameObject> test = scene.addGameObject(GameObject("Test", {905, 505}, {105*WORLDSCALE, 105*WORLDSCALE}, {0,0}, 0));
+    shared_ptr<GameObject> test = scene.addGameObject(GameObject("Test", {905, 505}, {16*WORLDSCALE, 16*WORLDSCALE}, {0,0}, 0));
     Image image = LoadImage(ASSET_DIR "work.png");
     test->addComponent<TextureGridComponent>(TextureGridComponent(nullptr, image,true));
     test->addComponent<MoveComponent>(MoveComponent(nullptr, 3, false));
 
-    
+    test->getComponent<TextureGridComponent>().cropSelfToFit();
 
     debugMode = false;
 

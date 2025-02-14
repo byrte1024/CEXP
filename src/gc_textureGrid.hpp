@@ -13,6 +13,7 @@
 #include "utils.hpp"
 
 #define WORLDSCALE 6.0f
+#define MIN_CROP_SIZE 0.8f
 
 class TextureGridComponent : public GameComponent {
     public:
@@ -51,6 +52,9 @@ class TextureGridComponent : public GameComponent {
 
         void start() override;
 
+        //override destroy
+        void onDestroy() override;
+
         //Updates the texture / uploads it to the GPU to represent the image
         void updateEntireTexture();
 
@@ -83,6 +87,14 @@ class TextureGridComponent : public GameComponent {
         Image cropImageToFit(Image image, Vector2& offset);
 
         void calcPivot();
+
+        void cropSelfToFit();
+
+        bool delCheck();
+
+        void del() {
+
+        }
 
 };
 

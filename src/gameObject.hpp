@@ -40,6 +40,8 @@ class GameObject {
         float rotation;
         std::vector<std::shared_ptr<GameComponent>> components;
 
+        bool readytodie = false;
+
         GameScene* parent;
         /*
         GameObject(std::string name, int x, int y, int w, int h, int px, int py, int rotation);
@@ -113,7 +115,7 @@ class GameObject {
         //Add a component to the game object by VALUE (creates a copy)
         template <class T>
         T& addComponent(T component) {
-            std::shared_ptr<T> newComponent = std::make_shared<T>(component);
+            std::shared_ptr<T> newComponent = std::make_shared<T>(component); 
             newComponent->gameObject = this;
             newComponent->start();
             //newComponent->start();
@@ -151,6 +153,11 @@ class GameObject {
 
         //Render all UI components
         void renderUI();
+
+        //Destroy the game object
+        void destroy();
+
+        
 
         
 };

@@ -8,8 +8,12 @@
 #include "utils.hpp"
 #include "gc_move.hpp"
 #include "gc_render.hpp"
+#include <memory>
 
 void TextureGridComponent::render() {
+    if(gameObject->readytodie){
+        return;
+    }
     /*
     Rectangle source = {0, 0, (float)image.width, (float)image.height};
     Rectangle dest = {static_cast<float>(gameObject->getX()), static_cast<float>(gameObject->getY()), (float)gameObject->getW(), (float)gameObject->getH()};
@@ -56,14 +60,15 @@ void TextureGridComponent::render() {
         }
         else if(IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
             ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, BLANK);
+            if(delCheck()){
+                gameObject->readytodie = true;
+                return;
+            }
+            cropSelfToFit();
             updateEntireTexture();
             recalculateIslands();
         }
     }
-
-    //Draw at center pixel
-    Vector2 centerPos = pixelToWorld(centerPixel);
-    DrawRectanglePro({centerPos.x, centerPos.y, 6, 6}, {3,3}, gameObject->rotation, RED);
 
     /*
     if(debugMode){
@@ -154,6 +159,17 @@ void TextureGridComponent::removeIsland(Image island) {
     updateEntireTexture();
 }
 
+bool TextureGridComponent::delCheck(){
+    for(int x = 0; x < image.width; x++) {
+        for(int y = 0; y < image.height; y++) {
+            if(GetImageColor(image, x, y).a != 0) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 Image TextureGridComponent::cropImageToFit(Image island, Vector2& offset) {
     int minX = island.width, minY = island.height, maxX = 0, maxY = 0;
     
@@ -168,6 +184,9 @@ Image TextureGridComponent::cropImageToFit(Image island, Vector2& offset) {
             }
         }
     }
+
+    //If the total amount of pixels we would be removing is less than 10% of the total pixels, don't crop
+
     
     // Ensure the bounds are valid
     if (maxX < minX || maxY < minY) return GenImageColor(1, 1, BLANK);
@@ -203,7 +222,7 @@ void TextureGridComponent::seperateIsland(Image island) {
 
     shared_ptr<GameObject> newIsland = currentScene->addGameObject(GameObject("Island", pos, size, {0,0}, gameObject->rotation));
     newIsland->addComponent<TextureGridComponent>(tg);
-    newIsland->addComponent<MoveComponent>(MoveComponent(nullptr, 3, false));
+    newIsland->addComponent<MoveComponent>(gameObject->getComponent<MoveComponent>());
 
     // Check the world position of our 0,0
     Vector2 zerozero = newIsland->getComponent<TextureGridComponent>().pixelToWorld({0, 0}) / WORLDSCALE;
@@ -213,6 +232,52 @@ void TextureGridComponent::seperateIsland(Image island) {
 
     newIsland->position = newIsland->position + diff;
 
+}
+
+void TextureGridComponent::cropSelfToFit() {
+    Vector2 offset;
+    Image croppedImage = cropImageToFit(image, offset);
+    if(image.width == croppedImage.width && image.height == croppedImage.height) {
+        UnloadImage(croppedImage);
+        return;
+    }
+    else{
+        if(croppedImage.width * croppedImage.height > image.width * image.height * MIN_CROP_SIZE) {
+            UnloadImage(croppedImage);
+            return;
+        }
+
+        UnloadImage(image);
+        UnloadTexture(texture);
+        image = croppedImage;
+
+        createTexture();
+
+        //Move the center pixel
+        centerPixel = {centerPixel.x - offset.x, centerPixel.y - offset.y};
+
+        //Check if the center pixel is still valid
+        if(centerPixel.x < 0 || centerPixel.x >= image.width || centerPixel.y < 0 || centerPixel.y >= image.height) {
+            Vector2 oldcenter = centerPixel;
+            centerPixel = {floor(static_cast<float>(image.width)/2), floor(static_cast<float>(image.height)/2)};
+
+            //Move us to account for the new center
+            Vector2 diff = {centerPixel.x - oldcenter.x, centerPixel.y - oldcenter.y};
+
+            Vector2 trueDiff = rotateVector(diff, gameObject->rotation);
+
+            gameObject->position = gameObject->position + (trueDiff * WORLDSCALE);
+        }
+
+        
+
+        calcPivot();
+
+        Vector2 trueOffset = rotateVector(offset, gameObject->rotation);
+
+        //gameObject->position = gameObject->position + (trueOffset * WORLDSCALE);
+        gameObject->size = {static_cast<float>(image.width*WORLDSCALE), static_cast<float>(image.height*WORLDSCALE)};   
+    }
 }
 
 
@@ -353,4 +418,9 @@ void TextureGridComponent::calcPivot(){
 
     //Set that to our game object
     gameObject->pivot = centerPos;
+}
+
+void TextureGridComponent::onDestroy() {
+    UnloadImage(image);
+    UnloadTexture(texture);
 }

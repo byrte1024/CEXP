@@ -4,6 +4,7 @@
 #include "gameObject.hpp"
 #include "gameComponent.hpp"
 #include <raylib.h>
+#include <memory>
 
 #include "utils.hpp"
 
