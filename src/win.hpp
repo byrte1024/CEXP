@@ -12,3 +12,6 @@ void messagePopup(std::string title, std::string message);
 
 //Create a question popup
 bool questionPopup(std::string title, std::string message);
+
+//Get the current amount of RAM usage by bytes
+int getRAMUsage();

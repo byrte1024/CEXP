@@ -10,7 +10,7 @@ BIN_DIR = ./bin
 # Compiler and flags
 CC = g++
 CFLAGS = -I$(RAYLIB_INCLUDE) -static
-LDFLAGS = -L$(RAYLIB_DIR)/src -lraylib -lwinmm -lgdi32 -lopengl32 -static
+LDFLAGS = -L$(RAYLIB_DIR)/src -lraylib -lwinmm -lgdi32 -lopengl32 -static 
 
 # Implement both .c, .hpp and .cpp files
 SRC_FILES = $(wildcard $(SRC_DIR)/*.c)

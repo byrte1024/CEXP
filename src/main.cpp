@@ -136,9 +136,19 @@ int main() {
     double elapsedRend = 0;
     double elapsedLogic = 0;
 
+    float lastMB = 0;
+
     while (!WindowShouldClose()) {
         ///Update
         lastMousePos = GetMousePosition();
+
+        if(IsKeyPressed(KEY_DELETE) || (IsKeyDown(KEY_DELETE)&&IsKeyDown(KEY_LEFT_SHIFT))){
+            //Delete a random object
+            int randIndex = rand() % scene.gameObjects.size();
+            scene.gameObjects[randIndex]->readytodie = true;
+        }
+
+        
 
         if(debugMode)
             start = GetTime();
@@ -197,10 +207,15 @@ int main() {
                 sleepStream << std::fixed << std::setprecision(1) << sleep;
 
                 int sceneCapacity = scene.gameObjects.capacity();
+
+                int RAM = getRAMUsage();
+
+                float MB = (float)RAM / 1024.0f / 1024.0f;
             
                 // Create a single string with all debug info
                 std::string debugInfo = 
                     "FPS: " + std::to_string(FPS) + "\n" +
+                    "RAM: " + std::to_string(MB) + " MB \n" +
                     "Objects: " + std::to_string(objCount) + " / " + std::to_string(sceneCapacity) + "\n" +
                     "LT: " + std::to_string(elapsedLogic) + "\n" +
                     "Rend: " + rendStream.str() + "%\n" +
