@@ -5,6 +5,7 @@
 #include "gameComponent.hpp"
 #include <iostream>
 #include <raylib.h>
+#include <rlgl.h>
 #include "utils.hpp"
 #include "gc_move.hpp"
 #include "gc_render.hpp"
@@ -38,11 +39,13 @@ void TextureGridComponent::render() {
         }
     }
     */
-    Rectangle source = {0, 0, (float)image.width, (float)image.height};
-    Rectangle dest = gameObject->getRect();
+    Rectangle source = {renderRect.x, renderRect.y, (float)renderRect.width, (float)renderRect.height};
+    Rectangle dest = {gameObject->position.x, gameObject->position.y, gameObject->size.x, gameObject->size.y};
     Vector2 origin = gameObject->pivot;
 
-    DrawTexturePro(texture, source, dest, origin, gameObject->rotation, WHITE);
+    Texture target = texture;
+
+    DrawTexturePro(target, source, dest, origin, gameObject->rotation, WHITE);
 
     Vector2 mousePosition = GetMousePosition();
     mousePosition = mousePosition;
@@ -51,23 +54,25 @@ void TextureGridComponent::render() {
 
     Vector2 pixelPosition = worldToPixel(mousePosition);
 
-    if(isValidPixel(pixelPosition)) {
-        DrawPixel(mousePosition.x, mousePosition.y, WHITE);
-        if(IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-            ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, RED);
-            updateEntireTexture();
-            recalculateIslands();
+    if(pixelPosition.x < renderRect.x || pixelPosition.x >= renderRect.x + renderRect.width || pixelPosition.y < renderRect.y || pixelPosition.y >= renderRect.y + renderRect.height) {
+        return;
+    }
+
+    DrawPixel(mousePosition.x, mousePosition.y, WHITE);
+    if(IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+        ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, RED);
+        updateEntireTexture();
+        recalculateIslands();
+    }
+    else if(IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
+        ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, BLANK);
+        if(delCheck()){
+            gameObject->readytodie = true;
+            return;
         }
-        else if(IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
-            ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, BLANK);
-            if(delCheck()){
-                gameObject->readytodie = true;
-                return;
-            }
-            cropSelfToFit();
-            updateEntireTexture();
-            recalculateIslands();
-        }
+        cropSelfToFit(false);
+        updateEntireTexture();
+        recalculateIslands();
     }
 
     /*
@@ -98,7 +103,7 @@ void TextureGridComponent::update() {
 
 void TextureGridComponent::start() {
     if(!norescale){
-        gameObject->size = {static_cast<float>(image.width*WORLDSCALE), static_cast<float>(image.height*WORLDSCALE)};
+        gameObject->size = {static_cast<float>(image.width * WORLDSCALE), static_cast<float>(image.height * WORLDSCALE)};
     }
     //print the size
     std::cout << "Size: " << gameObject->size.x << ", " << gameObject->size.y << std::endl;
@@ -127,6 +132,11 @@ void TextureGridComponent::renderUI() {
 
 //Updates the texture / uploads it to the GPU to represent the image
 void TextureGridComponent::updateEntireTexture() {
+    if(delay > 0) {
+        return;
+    }
+    //texture.width = image.width;
+    //texture.height = image.height;
     UpdateTexture(texture, image.data);
 }
 
@@ -144,7 +154,9 @@ void TextureGridComponent::recalculateIslands() {
         if(i!=0){
             seperateIsland(islands[i]);
         }
-        UnloadImage(islands[i]);
+        else{
+            UnloadImage(islands[i]);
+        }
     }
 }
 
@@ -156,7 +168,6 @@ void TextureGridComponent::removeIsland(Image island) {
             }
         }
     }
-    updateEntireTexture();
 }
 
 bool TextureGridComponent::delCheck(){
@@ -170,45 +181,12 @@ bool TextureGridComponent::delCheck(){
     return true;
 }
 
-Image TextureGridComponent::cropImageToFit(Image island, Vector2& offset) {
-    int minX = island.width, minY = island.height, maxX = 0, maxY = 0;
-    
-    // Find the bounding box of the non-transparent pixels
-    for (int x = 0; x < island.width; x++) {
-        for (int y = 0; y < island.height; y++) {
-            if (GetImageColor(island, x, y).a != 0) {
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-            }
-        }
-    }
-
-    //If the total amount of pixels we would be removing is less than 10% of the total pixels, don't crop
-
-    
-    // Ensure the bounds are valid
-    if (maxX < minX || maxY < minY) return GenImageColor(1, 1, BLANK);
-    
-    // Set the offset to update the new position
-    offset = { (float)minX, (float)minY };
-    
-    // Crop the image to the bounding box
-    Rectangle cropRect = { (float)minX, (float)minY, (float)(maxX - minX + 1), (float)(maxY - minY + 1) };
-    Image croppedImage = ImageFromImage(island, cropRect);
-    
-    return croppedImage;
-}
-
 
 void TextureGridComponent::seperateIsland(Image island) {
-    Vector2 offset;
-    Image croppedIsland = cropImageToFit(island, offset);
+
     removeIsland(island);
 
-    printf("Offset: %f, %f\n", offset.x, offset.y);
-
+    /*
     //Account for rotation of ourselves
     Vector2 trueOffset = rotateVector(offset, gameObject->rotation);
 
@@ -232,79 +210,104 @@ void TextureGridComponent::seperateIsland(Image island) {
 
     newIsland->position = newIsland->position + diff;
 
+    */
+
+    shared_ptr<GameObject> newIsland = currentScene->addGameObject(GameObject("Island", gameObject->position, gameObject->size, {0,0}, gameObject->rotation));
+    TextureGridComponent& tg = newIsland->addComponent<TextureGridComponent>(gameObject->getComponent<TextureGridComponent>());
+    tg.image = island;
+    tg.createTexture();
+    tg.cropSelfToFit();
+    newIsland->addComponent<MoveComponent>(gameObject->getComponent<MoveComponent>());
+    cropSelfToFit();
+    updateEntireTexture();
 }
 
-void TextureGridComponent::cropSelfToFit() {
-    Vector2 offset;
-    Image croppedImage = cropImageToFit(image, offset);
-    if(image.width == croppedImage.width && image.height == croppedImage.height) {
-        UnloadImage(croppedImage);
-        return;
-    }
-    else{
-        if(croppedImage.width * croppedImage.height > image.width * image.height * MIN_CROP_SIZE) {
-            UnloadImage(croppedImage);
-            return;
+void TextureGridComponent::cropSelfToFit(bool force) {
+
+    //Find the bounds of renderrect (the part of the image we are rendering, NOT THE IMAGE ITSELF!)
+    int minX = image.width;
+    int minY = image.height;
+
+    int maxX = 0;
+    int maxY = 0;
+
+    for(int x = 0; x < image.width; x++) {
+        for(int y = 0; y < image.height; y++) {
+            if(GetImageColor(image, x, y).a != 0) {
+                if(x < minX) {
+                    minX = x;
+                }
+                if(y < minY) {
+                    minY = y;
+                }
+                if(x > maxX) {
+                    maxX = x;
+                }
+                if(y > maxY) {
+                    maxY = y;
+                }
+            }
         }
-
-        UnloadImage(image);
-        UnloadTexture(texture);
-        image = croppedImage;
-
-        createTexture();
-
-        //Move the center pixel
-        centerPixel = {centerPixel.x - offset.x, centerPixel.y - offset.y};
-
-        //Check if the center pixel is still valid
-        if(centerPixel.x < 0 || centerPixel.x >= image.width || centerPixel.y < 0 || centerPixel.y >= image.height) {
-            Vector2 oldcenter = centerPixel;
-            centerPixel = {floor(static_cast<float>(image.width)/2), floor(static_cast<float>(image.height)/2)};
-
-            //Move us to account for the new center
-            Vector2 diff = {centerPixel.x - oldcenter.x, centerPixel.y - oldcenter.y};
-
-            Vector2 trueDiff = rotateVector(diff, gameObject->rotation);
-
-            gameObject->position = gameObject->position + (trueDiff * WORLDSCALE);
-        }
-
-        
-
-        calcPivot();
-
-        Vector2 trueOffset = rotateVector(offset, gameObject->rotation);
-
-        //gameObject->position = gameObject->position + (trueOffset * WORLDSCALE);
-        gameObject->size = {static_cast<float>(image.width*WORLDSCALE), static_cast<float>(image.height*WORLDSCALE)};   
     }
-}
 
-
-//Converts a pixel position to a world position
-Vector2 TextureGridComponent::pixelToWorld(Vector2 pixelPos) {
-    // Step 1: Convert from pixel coordinates to world units.
-    Vector2 worldUnits = { pixelPos.x * WORLDSCALE, pixelPos.y * WORLDSCALE };
+   
     
-    // Step 2: Remove the pivot offset.
-    Vector2 unpivoted = { worldUnits.x - (gameObject->pivot.x),
-                          worldUnits.y - gameObject->pivot.y};
+    
 
-    // Step 3: Apply the object's rotation (rotate by +rotation).
+    Vector2 offset  = {minX - renderRect.x, minY - renderRect.y};
+
+    renderRect = {static_cast<float>(minX), static_cast<float>(minY), static_cast<float>(maxX - minX + 1), static_cast<float>(maxY - minY + 1)};
+
+    Vector2 trueOffset = rotateVector(offset, gameObject->rotation);
+    // Update our transformation
+    gameObject->size = {static_cast<float>(renderRect.width * WORLDSCALE), static_cast<float>(renderRect.height * WORLDSCALE)};
+    //gameObject->position = gameObject->position + trueOffset * WORLDSCALE;
+
+    calcPivot();
+    
+    Vector2 oldzz = pixelToWorld({0, 0});
+
+    //Check if center pixel is outside render rect
+    if(centerPixel.x < renderRect.x || centerPixel.x > renderRect.x + renderRect.width || centerPixel.y < renderRect.y || centerPixel.y > renderRect.y + renderRect.height){
+        centerPixel = {floor(static_cast<float>(renderRect.width)/2 + renderRect.x), floor(static_cast<float>(renderRect.height)/2  + renderRect.y)};
+    }
+
+    calcPivot();
+
+    Vector2 newzz = pixelToWorld({0, 0});
+
+    Vector2 diff = (oldzz - newzz);
+
+    gameObject->position = gameObject->position + diff;
+
+}
+
+Vector2 TextureGridComponent::pixelToWorld(Vector2 pixelPos) {
+    // Step 1: Adjust the pixel position based on the renderRect offset
+    Vector2 adjustedPixelPos = { pixelPos.x - renderRect.x, pixelPos.y - renderRect.y };
+
+    // Step 2: Convert from pixel coordinates to world units.
+    Vector2 worldUnits = { adjustedPixelPos.x * WORLDSCALE, adjustedPixelPos.y * WORLDSCALE };
+
+    // Step 3: Remove the pivot offset.
+    Vector2 unpivoted = { worldUnits.x - (gameObject->pivot.x),
+                          worldUnits.y - gameObject->pivot.y };
+
+    // Step 4: Apply the object's rotation (rotate by +rotation).
     float rad = gameObject->rotation * DEG2RAD;
     float cosTheta = cos(rad);
     float sinTheta = sin(rad);
     Vector2 rotated = { unpivoted.x * cosTheta - unpivoted.y * sinTheta,
                         unpivoted.x * sinTheta + unpivoted.y * cosTheta };
 
-    // Step 4: Translate back to world coordinates.
+    // Step 5: Translate back to world coordinates.
     Vector2 worldPos = { rotated.x + gameObject->position.x,
                          rotated.y + gameObject->position.y };
-    
+
     return worldPos;
 }
 
-//Converts a world position to a pixel position
+
 Vector2 TextureGridComponent::worldToPixel(Vector2 worldPos) {
     // Step 1: Translate the world coordinate into the object's local space.
     Vector2 localPos = { worldPos.x - gameObject->position.x,
@@ -325,96 +328,87 @@ Vector2 TextureGridComponent::worldToPixel(Vector2 worldPos) {
     // Step 4: Convert from world units to pixel coordinates (if WORLDSCALE != 1).
     pixelPos.x = floor(pixelPos.x / WORLDSCALE);
     pixelPos.y = floor(pixelPos.y / WORLDSCALE);
-    
+
+    // Step 5: Adjust the pixel position based on the renderRect offset
+    pixelPos.x += renderRect.x;
+    pixelPos.y += renderRect.y;
+
     return pixelPos;
 }
+
 
 void disposeIslands(std::vector<Image>& islands) {
     for (Image& island : islands) {
         UnloadImage(island);
     }
 }
-
-void TextureGridComponent::floodFill(Vector2 pixel, std::vector<std::vector<bool>>& visited, std::vector<Image>& islands) {
-    // Check if the pixel is valid and has not been visited.
-    if (!isValidPixel(pixel) || visited[pixel.x][pixel.y]) {
+constexpr int MAX_STACK_SIZE = 100000; // Adjust as needed for large images
+void TextureGridComponent::floodFill(Vector2 pixel, bool* visited, std::vector<Image>& islands) {
+    if (!isValidPixel(pixel) || visited[static_cast<int>(pixel.y) * image.width + static_cast<int>(pixel.x)] || isTransparentPixel(pixel)) {
         return;
     }
 
-    if (isTransparentPixel(pixel)) {
-        return;
-    }
-
-    // Create a queue to store pixels to visit.
-    std::vector<Vector2> queue;
-
-    // Push the starting pixel onto the queue.
-    queue.push_back(pixel);
-
-    // Create an image to store the island.
+    // Create an image for this island
     Image island = GenImageColor(image.width, image.height, BLANK);
 
-    // While the queue is not empty.
-    while (!queue.empty()) {
-        // Get the pixel at the front of the queue.
-        Vector2 current = queue.front();
-        queue.erase(queue.begin());
+    // Preallocated stack for DFS (using a fixed-size array instead of std::stack)
+    
+    Vector2 stack[MAX_STACK_SIZE];
+    int stackIndex = 0;
 
-        // Check if the pixel is valid and has not been visited.
-        if (!isValidPixel(current) || visited[current.x][current.y]) {
+    // Push the initial pixel onto the stack
+    stack[stackIndex++] = pixel;
+
+    // Start flood fill using iterative DFS
+    while (stackIndex > 0) {
+        Vector2 current = stack[--stackIndex]; // Pop from stack
+
+        int index = current.y * image.width + current.x;
+        if (visited[index] || isTransparentPixel(current)) {
             continue;
         }
 
-        if (isTransparentPixel(current)) {
-            continue;
-        }
+        // Mark as visited
+        visited[index] = true;
 
-        // Mark the pixel as visited.
-        visited[current.x][current.y] = true;
-
-        // Set the pixel in the island image to the one in the original image.
+        // Copy pixel to the island image
         ImageDrawPixel(&island, current.x, current.y, GetImageColor(image, current.x, current.y));
 
-        // Add the pixel to the island.
-        //island.push_back(current);
-
-        // Add the neighbors to the queue.
-        queue.push_back({current.x - 1, current.y});
-        queue.push_back({current.x + 1, current.y});
-        queue.push_back({current.x, current.y - 1});
-        queue.push_back({current.x, current.y + 1});
+        // Push neighboring pixels onto the stack (manual inlining for better performance)
+        if (current.x > 0 && !visited[index - 1]) stack[stackIndex++] = {current.x - 1, current.y};
+        if (current.x < image.width - 1 && !visited[index + 1]) stack[stackIndex++] = {current.x + 1, current.y};
+        if (current.y > 0 && !visited[index - image.width]) stack[stackIndex++] = {current.x, current.y - 1};
+        if (current.y < image.height - 1 && !visited[index + image.width]) stack[stackIndex++] = {current.x, current.y + 1};
     }
 
-    // Add the island to the list of islands.
+    // Store the island
     islands.push_back(island);
-
 }
 
+
 std::vector<Image> TextureGridComponent::findIslands() {
-    // Create a vector to store the islands.
     std::vector<Image> islands;
 
-    // Create a vector to store visited pixels.
-    std::vector<std::vector<bool>> visited(image.width, std::vector<bool>(image.height, false));
+    // Create a visited array
+    bool* visited = new bool[image.width * image.height]{};
 
-    // Loop through each pixel in the image.
-    for (int x = 0; x < image.width; x++) {
-        for (int y = 0; y < image.height; y++) {
-            // Check if the pixel has not been visited.
-            if (!visited[x][y]) {
-                // Flood fill the island.
-                Vector2 pixel = {x, y};
-                floodFill(pixel, visited, islands);
+    for (int y = 0; y < image.height; y++) {
+        for (int x = 0; x < image.width; x++) {
+            if (!visited[y * image.width + x] && !isTransparentPixel({static_cast<float>(x), static_cast<float>(y)})) {
+                floodFill({static_cast<float>(x), static_cast<float>(y)}, visited, islands);
             }
         }
     }
+
+    delete[] visited;
 
     return islands;
 }
 
 void TextureGridComponent::calcPivot(){
     //Find the position of the center pixel and multiply it by world size
-    Vector2 centerPos = {centerPixel.x * WORLDSCALE, centerPixel.y * WORLDSCALE};
+    Vector2 centerPos = {(centerPixel.x-renderRect.x) * WORLDSCALE, (centerPixel.y-renderRect.y) * WORLDSCALE};
+
 
     //Set that to our game object
     gameObject->pivot = centerPos;
@@ -423,4 +417,8 @@ void TextureGridComponent::calcPivot(){
 void TextureGridComponent::onDestroy() {
     UnloadImage(image);
     UnloadTexture(texture);
+}
+
+Vector2 TextureGridComponent::true00(){ 
+    return (pixelToWorld({-renderRect.x, -renderRect.y}) / WORLDSCALE);
 }

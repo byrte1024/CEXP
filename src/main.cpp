@@ -54,17 +54,19 @@ int main() {
     GameScene scene;
     currentScene = &scene;
 
-    shared_ptr<GameObject> test = scene.addGameObject(GameObject("Test", {905, 505}, {16*WORLDSCALE, 16*WORLDSCALE}, {0,0}, 0));
+    shared_ptr<GameObject> test = scene.addGameObject(GameObject("Test", {905, 505}, {128*WORLDSCALE, 128*WORLDSCALE}, {64*WORLDSCALE,64*WORLDSCALE}, 0));
     Image image = LoadImage(ASSET_DIR "work.png");
     test->addComponent<TextureGridComponent>(TextureGridComponent(nullptr, image,true));
     test->addComponent<MoveComponent>(MoveComponent(nullptr, 3, false));
 
-    test->getComponent<TextureGridComponent>().cropSelfToFit();
 
     debugMode = false;
 
-    SetTargetFPS(120);
+    SetTargetFPS(60);
     
+    double start = 0;
+    double end = 0;
+    double elapsedRend = 0;
 
     while (!WindowShouldClose()) {
         ///Update
@@ -78,18 +80,34 @@ int main() {
         ///Drawing
         BeginDrawing();
 
-            ClearBackground(WHITE);
+            ClearBackground(BLACK);
+
+            if(debugMode)
+                start = GetTime();
             scene.render();
+            if(debugMode){
+                end = GetTime();
+                elapsedRend = end - start;
+            }
 
             scene.renderUI();
 
             if(debugMode) {
                 DrawCircle(lastMousePos.x, lastMousePos.y, 4, RED);
                 int FPS = GetFPS();
-                DrawText(std::to_string(FPS).c_str(), 10, 10, 70, RED);
+                std::string fpsText = "FPS : " + std::to_string(FPS);
+                DrawText(fpsText.c_str(), 10, 10, 40, RED);
+                int objCount = scene.gameObjects.size();
+                std::string objText = "Objects : " + std::to_string(objCount);
+                DrawText(objText.c_str(), 10, 50, 40, RED);
+                std::string timeText = "Render Time : " + std::to_string(elapsedRend) + " \n " + std::to_string(1.0 / 60);
+                DrawText(timeText.c_str(), 10, 90, 40, RED);
             }
 
         EndDrawing();
+
+        //_sleep(1000);
+
     }
 
     CloseWindow();

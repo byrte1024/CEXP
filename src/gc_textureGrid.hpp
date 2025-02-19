@@ -13,7 +13,7 @@
 #include "utils.hpp"
 
 #define WORLDSCALE 6.0f
-#define MIN_CROP_SIZE 0.8f
+#define MIN_CROP_SIZE 1.0f
 
 class TextureGridComponent : public GameComponent {
     public:
@@ -27,12 +27,19 @@ class TextureGridComponent : public GameComponent {
         //The texture uploaded to the GPU
         Texture2D texture;
 
+        //The fake "dimensions" used to save resources on cropping
+        Rectangle renderRect = {0,0,0,0};
+
+        //Needs to update
+        int delay = 0;
+
         TextureGridComponent(GameObject* obj = nullptr) : GameComponent(obj) {
             this->image = GenImageColor(16, 16, BLACK);
             createTexture();
+            renderRect = {0,0,16,16};
         }
 
-        TextureGridComponent(GameObject* obj, Image image,bool norescale = false, Vector2 centerPixel = {-1,-1}) : GameComponent(obj) {
+        TextureGridComponent(GameObject* obj, Image image,bool norescale = false, Vector2 centerPixel = {-1,-1 } ) : GameComponent(obj) {
             this->image = image;
             this->norescale = norescale;
             if(centerPixel.x  == -1 || centerPixel.y == -1){
@@ -42,6 +49,7 @@ class TextureGridComponent : public GameComponent {
                 this->centerPixel = centerPixel;
             }
             createTexture();
+            renderRect = {0,0,static_cast<float>(image.width),static_cast<float>(image.height)};
         }
 
         void renderUI() override;
@@ -82,13 +90,13 @@ class TextureGridComponent : public GameComponent {
 
         std::vector<Image> findIslands();
 
-        void floodFill(Vector2 pixel, std::vector<std::vector<bool>>& visited, std::vector<Image>& islands);
+        void floodFill(Vector2 pixel, bool* visited, std::vector<Image>& islands);
 
-        Image cropImageToFit(Image image, Vector2& offset);
+        Vector2 true00();
 
         void calcPivot();
 
-        void cropSelfToFit();
+        void cropSelfToFit(bool force = false);
 
         bool delCheck();
 

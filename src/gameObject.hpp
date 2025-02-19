@@ -157,6 +157,8 @@ class GameObject {
         //Destroy the game object
         void destroy();
 
+        //Trigger all component activation
+        void startComps();
         
 
         

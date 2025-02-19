@@ -169,3 +169,13 @@ std::array<Vector2, 4> GameObject::getRectCorners() {
 }
 
 //Destroy
+
+
+//Start comps
+void GameObject::startComps() {
+    //Loop through all components
+    for (int i = 0; i < components.size(); i++) {
+        //Call the start function
+        components[i]->start();
+    }
+}

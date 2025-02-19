@@ -31,7 +31,8 @@ void GameScene::renderUI() {
 
 std::shared_ptr<GameObject> GameScene::addGameObject(GameObject obj) {
     std::shared_ptr<GameObject> ptr = std::make_shared<GameObject>(obj);
-    gameObjects.push_back(ptr);
+    gameObjects.insert(gameObjects.begin(), ptr);
+    ptr->parent = this;
     return ptr;
 }
 
