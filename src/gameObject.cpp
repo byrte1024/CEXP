@@ -7,6 +7,7 @@
 #include <cmath>
 #include <tuple>
 #include <array>
+#include "utils.hpp"
 
 GameObject::GameObject(std::string name, Vector2 position, Vector2 size, Vector2 pivot, float rotation) {
     this->name = name;
@@ -150,8 +151,8 @@ std::array<Vector2, 4> GameObject::getRectCorners() {
     
     // Compute sine and cosine once
     float rad = rotation * DEG2RAD;
-    float cosTheta = cos(rad);
-    float sinTheta = sin(rad);
+    float cosTheta = get_cosine_by_radians(rad);
+    float sinTheta = get_sine_by_radians(rad);
 
     // Get corners
     Vector2 tl = {rect.x, rect.y};

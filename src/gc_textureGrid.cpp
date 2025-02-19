@@ -47,33 +47,7 @@ void TextureGridComponent::render() {
 
     DrawTexturePro(target, source, dest, origin, gameObject->rotation, WHITE);
 
-    Vector2 mousePosition = GetMousePosition();
-    mousePosition = mousePosition;
     
-    std::vector<Color> islandColors = {RED, GREEN, BLUE, YELLOW, ORANGE, PINK, PURPLE, BROWN, BEIGE, LIME, GOLD, SKYBLUE, DARKBLUE, DARKGREEN, DARKPURPLE, DARKBROWN, GRAY, DARKGRAY, LIGHTGRAY, MAROON};
-
-    Vector2 pixelPosition = worldToPixel(mousePosition);
-
-    if(pixelPosition.x < renderRect.x || pixelPosition.x >= renderRect.x + renderRect.width || pixelPosition.y < renderRect.y || pixelPosition.y >= renderRect.y + renderRect.height) {
-        return;
-    }
-
-    DrawPixel(mousePosition.x, mousePosition.y, WHITE);
-    if(IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-        ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, RED);
-        updateEntireTexture();
-        recalculateIslands();
-    }
-    else if(IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
-        ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, BLANK);
-        if(delCheck()){
-            gameObject->readytodie = true;
-            return;
-        }
-        cropSelfToFit(false);
-        updateEntireTexture();
-        recalculateIslands();
-    }
 
     /*
     if(debugMode){
@@ -98,6 +72,32 @@ void TextureGridComponent::render() {
 
 void TextureGridComponent::update() {
     //Get the mouse position
+    Vector2 mousePosition = GetMousePosition();
+    mousePosition = mousePosition;
+    
+    std::vector<Color> islandColors = {RED, GREEN, BLUE, YELLOW, ORANGE, PINK, PURPLE, BROWN, BEIGE, LIME, GOLD, SKYBLUE, DARKBLUE, DARKGREEN, DARKPURPLE, DARKBROWN, GRAY, DARKGRAY, LIGHTGRAY, MAROON};
+
+    Vector2 pixelPosition = worldToPixel(mousePosition);
+
+    if(pixelPosition.x < renderRect.x || pixelPosition.x >= renderRect.x + renderRect.width || pixelPosition.y < renderRect.y || pixelPosition.y >= renderRect.y + renderRect.height) {
+        return;
+    }
+
+    if(IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+        ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, RED);
+        updateEntireTexture();
+        recalculateIslands();
+    }
+    else if(IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
+        ImageDrawPixel(&image, pixelPosition.x, pixelPosition.y, BLANK);
+        if(delCheck()){
+            gameObject->readytodie = true;
+            return;
+        }
+        cropSelfToFit(false);
+        updateEntireTexture();
+        recalculateIslands();
+    }
     
 }
 
@@ -295,8 +295,8 @@ Vector2 TextureGridComponent::pixelToWorld(Vector2 pixelPos) {
 
     // Step 4: Apply the object's rotation (rotate by +rotation).
     float rad = gameObject->rotation * DEG2RAD;
-    float cosTheta = cos(rad);
-    float sinTheta = sin(rad);
+    float cosTheta = get_cosine_by_radians(rad);
+    float sinTheta = get_sine_by_radians(rad);
     Vector2 rotated = { unpivoted.x * cosTheta - unpivoted.y * sinTheta,
                         unpivoted.x * sinTheta + unpivoted.y * cosTheta };
 
@@ -316,8 +316,8 @@ Vector2 TextureGridComponent::worldToPixel(Vector2 worldPos) {
     // Step 2: Apply the inverse rotation (rotate by -rotation).
     // Convert rotation to radians.
     float rad = -gameObject->rotation * DEG2RAD;
-    float cosTheta = cos(rad);
-    float sinTheta = sin(rad);
+    float cosTheta = get_cosine_by_radians(rad);
+    float sinTheta = get_sine_by_radians(rad);
     Vector2 unrotated = { localPos.x * cosTheta - localPos.y * sinTheta,
                           localPos.x * sinTheta + localPos.y * cosTheta };
 
